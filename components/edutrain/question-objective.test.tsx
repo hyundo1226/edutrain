@@ -70,4 +70,17 @@ describe("QuestionObjective", () => {
     await user.click(otherOption);
     expect(screen.getByRole("radio", { name: /^list/ })).toBeChecked();
   });
+
+  it("[버그 수정] answer 필드에 choices와 다른 공백이 섞여도 정답 선택이 정답으로 표시된다", async () => {
+    // Gemini가 answer="list " 처럼 choices 중 하나와 미세하게(공백) 다르게 생성해도
+    // 그 보기를 고르면 정답 처리되어야 한다 (이전엔 완전일치 비교라 항상 오답 처리됐음).
+    const question: Question = { ...mcQuestion, answer: "list " };
+    const { onGraded, user } = setup(question);
+
+    await user.click(screen.getByRole("radio", { name: /^list/ }));
+    await user.click(screen.getByRole("button", { name: "제출" }));
+
+    expect(screen.getByText("정답")).toBeInTheDocument();
+    expect(onGraded).toHaveBeenCalledWith(expect.objectContaining({ correct: true }));
+  });
 });

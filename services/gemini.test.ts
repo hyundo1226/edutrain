@@ -56,6 +56,23 @@ describe("generateQuestions", () => {
     expect(prompt).toContain("객관식");
   });
 
+  it("[버그 수정] 프롬프트가 answer를 choices와 완전히 동일한 문자열로 명시적으로 요구한다 (Gemini가 'B' 같은 라벨만 반환하던 실제 버그 재발 방지)", async () => {
+    mockQuestions([
+      { type: "mc", prompt: "Q", tags: ["t"], difficulty: "medium", choices: ["a"], answer: "a" },
+    ]);
+
+    await generateQuestions({
+      material: "자료",
+      types: ["mc"],
+      difficulty: "medium",
+      count: 1,
+    });
+
+    const prompt = generateContentMock.mock.calls[0][0].contents as string;
+    expect(prompt).toContain("완전히 동일한 문자열");
+    expect(prompt).toContain("라벨만 적지 말고");
+  });
+
   it("[S6-1] weakTags를 전달하면 프롬프트에 약점 태그 우선 출제 지시가 포함된다", async () => {
     mockQuestions([
       { type: "mc", prompt: "Q", tags: ["미분"], difficulty: "medium", choices: ["a"], answer: "a" },

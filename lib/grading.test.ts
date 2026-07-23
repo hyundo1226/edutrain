@@ -39,6 +39,14 @@ describe("gradeObjective", () => {
     expect(r.correct).toBe(false);
   });
 
+  it("[버그 수정] Gemini answer 필드에 choices와 다른 공백이 섞여도 정답 선택은 정답 처리된다", () => {
+    // Gemini가 answer를 "파리 " 처럼 미세하게 다르게(공백 등) 생성해도
+    // choices 중 하나("파리")를 정확히 고르면 정답으로 처리돼야 한다.
+    const q = mcQ("파리 ", ["런던", "파리", "베를린"]);
+    const r = gradeObjective(q, "파리");
+    expect(r.correct).toBe(true);
+  });
+
   it("결과에 questionId와 given이 담긴다", () => {
     const r = gradeObjective(shortQ("답"), "답");
     expect(r.questionId).toBe("q1");

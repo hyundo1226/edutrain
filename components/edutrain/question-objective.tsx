@@ -5,7 +5,7 @@ import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { gradeObjective } from "@/lib/grading";
+import { gradeObjective, normalizeAnswer } from "@/lib/grading";
 import type { AnswerResult, Question } from "@/types/quiz";
 
 export interface QuestionObjectiveProps {
@@ -45,7 +45,8 @@ export function QuestionObjective({
           className="mb-4"
         >
           {question.choices?.map((choice) => {
-            const isAnswerChoice = choice === question.answer;
+            const isAnswerChoice =
+              normalizeAnswer(choice) === normalizeAnswer(question.answer ?? "");
             const isGivenChoice = choice === given;
             return (
               <label key={choice} className="flex items-center gap-2">
