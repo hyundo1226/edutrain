@@ -200,4 +200,29 @@ date: 2026-07-23
 
 **지시문**: `/api/generate`·`/api/grade` 실제 호출이 실패하면 먼저 서버 로그(`preview_logs`)에서 원인을 확인하라. `RESOURCE_EXHAUSTED`/"prepayment credits are depleted"면 코드가 아니라 계정 결제 문제이므로 재시도·디버깅 대신 사용자에게 AI Studio 결제 확인을 안내하고, 최종 spike(실제 문항 품질·채점 신뢰성 확인)는 크레딧 충전 후로 미룬다.
 **에피소드**: Task 5 브라우저 검증 중 create-set.tsx에서 실제 자료로 세트 생성 시도 → "문제 생성에 실패했습니다" 표시. 서버 로그에서 429 RESOURCE_EXHAUSTED 확인. 동시에 이 실패가 S1-6 에러 처리(일반 메시지 노출, 키 미노출)와 다시 시도 버튼이 실제 오류에서도 올바르게 동작함을 재확인하는 계기가 됨.
-**증거**: preview_logs, `[/api/generate] 생성 실패: Error [ApiError]: ...RESOURCE_EXHAUSTED...status 429`. 최종 Checkpoint의 "실제 Gemini 키로 1회 수동 확인" 항목은 크레딧 충전 필요.
+**증거**: preview_logs, `[/api/generate] 생성 실패: Error [ApiError]: ...RESOURCE_EXHAUSTED...status 429`.
+**후속(해결됨, 2026-07-23 같은 날)**: 같은 계정 내 여러 키를 시도해도 동일 에러 반복 → 순수 curl(SDK 우회)로도 동일 에러 → 계정의 Gemini API 전용 선불(prepay) 크레딧 소진이 원인임을 확정(일반 GCP 무료체험 크레딧과는 별개). 이후 사용자가 같은 계정에서 새로 발급한 키로 전환하니 정상 동작(아래 항목 참고). 최종 Checkpoint의 "실제 Gemini 키로 1회 수동 확인"·S1-5·S6-1·INV-1 전부 실제 호출로 검증 완료.
+
+---
+triggers: [Gemini API 키 형식, AIzaSy, "AQ.Ab8", API 키 검증, 429 진단, curl 우회 테스트, 키 인증 성공 판별]
+status: verified
+scope: this-project (2026-07-23 시점, gemini-flash-latest 응답 modelVersion gemini-3.6-flash)
+date: 2026-07-23
+---
+## Gemini API 키가 `AIzaSy...`로 시작해야 한다는 가정은 이제 최신이 아니다 — `AQ.Ab8...` 형식도 유효한 키다
+
+**지시문**: Gemini API 키 형식을 안다고 가정하지 말고, 형식이 낯설면 "형식이 다르다"고 바로 무효 판정하지 말고 실제로 최소 비용(`curl`로 짧은 프롬프트 1회)으로 검증하라. AI Studio의 "API 키 세부정보" 다이얼로그(이름: "Gemini API Key")에서 나온 값이면 형식과 무관하게 우선 신뢰할 근거가 있다.
+**에피소드**: 사용자가 두 번 `AQ.Ab8...` 형식 값을 제시했을 때 "AIzaSy 형식이 아니다"라며 두 번 다 거부했으나, 세 번째로 "API 키 세부정보" 다이얼로그 스크린샷과 함께 온 같은 형식의 값은 실제로 유효했다(정상 응답, modelVersion `gemini-3.6-flash`). 오래된 지식(AIzaSy 접두사)에 과신해 실제 검증을 미룬 것이 판단 지연의 원인.
+**증거**: `curl .../gemini-flash-latest:generateContent` 성공 응답(candidates 반환), 이후 실제 앱에서 S1-5/S6-1/S3-1/INV-1 전부 실증
+
+---
+triggers: [INV-1 실증, 네트워크 탭 확인, 클라이언트 번들 스캔, read_network_requests, 키 노출 검사 방법]
+status: verified
+scope: this-repo (Next.js 16, Claude Browser pane)
+date: 2026-07-23
+---
+## "네트워크 응답·클라이언트 번들에 키 미노출"은 스크립트 태그 전수 스캔으로 기계적으로 검증할 수 있다
+
+**지시문**: INV-1류("키가 번들에 없다") 기준을 검증할 때는 `read_network_requests`로 실제 응답 바디를 읽고, 추가로 브라우저에서 `document.querySelectorAll('script[src]')`로 모든 스크립트를 fetch해 키 문자열 포함 여부를 전수 검사하라. 육안으로 코드를 읽는 것보다 빠르고 확실하다.
+**에피소드**: Task 12 최종 검증에서 21개 클라이언트 스크립트를 전수 스캔해 키 문자열이 어디에도 없음을 확인. 응답 바디 확인과 합쳐 INV-1을 완전히 실증.
+**증거**: javascript_tool 스캔 결과 `{"scriptCount":21,"found":[]}`

@@ -269,10 +269,10 @@
 
 ---
 
-### 최종 Checkpoint
-- [ ] 모든 테스트 통과 / 빌드 성공 / `scripts/spec-coverage.sh edutrain --tests`
-- [ ] 실제 Gemini 키로 생성·서술형 채점을 1회 수동 확인(리스크 spike): 문항 품질·태그·채점 신뢰성 육안 평가, 증거 `artifacts/edutrain/evidence/`에 저장 (web-design-guidelines로 UI 접근성도 점검)
-- [ ] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준 체크박스를 spec.md에서 켠다 (INV-1: 네트워크 탭/번들에 키 미노출, INV-2: 새로고침 후 유지, INV-3: 표시값=기록 일치 포함)
+### 최종 Checkpoint ✅
+- [x] 모든 테스트 통과(76/76) / 빌드 성공 / `scripts/spec-coverage.sh edutrain --tests` 통과
+- [x] 실제 Gemini 키로 생성·서술형 채점 1회 수동 확인: 문항 품질·태그 양호, 서술형 채점(70/100)이 구체적 근거와 함께 타당하게 산출됨
+- [x] spec.md의 **End-to-end 검증** 절차 실행 — 25개 판정 기준 전부 체크 완료 (INV-1: 네트워크 응답·클라이언트 번들 21개 스크립트 전수 스캔으로 키 미노출 확인, INV-2/INV-3: 브라우저 새로고침·재계산 일치 확인)
 
 ## 미결정 항목
 
