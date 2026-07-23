@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { QuestionObjective } from "@/components/edutrain/question-objective";
+import { QuestionEssay } from "@/components/edutrain/question-essay";
 import type { AnswerResult, QuizSet } from "@/types/quiz";
 
 export interface QuizRunnerProps {
@@ -51,10 +52,13 @@ export function QuizRunner({ quizSet, onGraded, onComplete }: QuizRunnerProps) {
       )}
 
       {question.type === "essay" && (
-        // T7에서 question-essay.tsx로 교체된다.
-        <div key={question.id} className="text-sm text-muted-foreground">
-          서술형 문항 (T7에서 구현)
-        </div>
+        <QuestionEssay
+          key={question.id}
+          question={question}
+          onGraded={onGraded}
+          onNext={handleNext}
+          nextLabel={isLast ? "결과 보기 →" : "다음 문항 →"}
+        />
       )}
     </div>
   );
