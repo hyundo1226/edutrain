@@ -4,6 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { GrassCalendar } from "@/components/edutrain/grass-calendar";
 import { BadgeList } from "@/components/edutrain/badge-list";
+import { LevelCard } from "@/components/edutrain/level-card";
 import type { GamificationState, Material, SessionRecord, Stats } from "@/types/quiz";
 
 export interface HomeProps {
@@ -33,7 +34,7 @@ export function Home({
         <Button onClick={onCreateNew}>+ 새 세트 만들기</Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 mb-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 mb-6 md:grid-cols-4">
         <div className="rounded-lg border p-3">
           <div className="text-xs text-muted-foreground">누적 점수</div>
           <div className="text-2xl font-bold">{stats.cumulativeScore}</div>
@@ -46,6 +47,7 @@ export function Home({
           <div className="text-xs text-muted-foreground">최고 연속 정답</div>
           <div className="text-2xl font-bold">{stats.bestCorrectStreak}</div>
         </div>
+        <LevelCard levelScore={gamification.levelScore} />
       </div>
 
       <div className="mb-6">
