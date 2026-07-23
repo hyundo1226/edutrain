@@ -71,7 +71,7 @@ None — 클라이언트 로컬 저장(localStorage)만 사용, 외부 리소스
   - `intensityLevel`이 임계값(0/1/3/6/10 — 제안 기본값)별로 0~4 단계를 반환
   - `bun run typecheck`
 
-### Task 2: 세트 완료 시 게임화 상태 갱신 (hook 통합)
+### Task 2: 세트 완료 시 게임화 상태 갱신 (hook 통합) ✅
 
 - **담당 판정 기준**: INV-2
 - **크기**: S

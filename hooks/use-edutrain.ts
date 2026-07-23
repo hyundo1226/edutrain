@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
   AnswerResult,
+  GamificationState,
   Material,
   QuizSet,
   SessionRecord,
@@ -14,8 +15,20 @@ import * as storage from "@/lib/storage";
 import { EMPTY_STATS, recordSessionStats } from "@/lib/stats";
 import { scoreSet } from "@/lib/scoring";
 import { updateWeaknesses, activeWeakTags } from "@/lib/weakness";
+import {
+  EMPTY_GAMIFICATION,
+  recordSessionGamification,
+  newlyEarnedBadges,
+  didLevelUp,
+} from "@/lib/gamification";
 
 export type Screen = "home" | "create" | "quiz" | "result" | "weak-set";
+
+/** 세트 완료 직후 알려줄 게임화 이벤트 (결과 화면이 읽어서 배너로 표시). */
+export interface CompletionNotice {
+  newBadges: string[];
+  leveledUp: boolean;
+}
 
 function todayString(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -35,12 +48,16 @@ export function useEduTrain() {
   const [weaknesses, setWeaknesses] = useState<WeaknessEntry[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [gamification, setGamification] = useState<GamificationState>(EMPTY_GAMIFICATION);
+  const [lastCompletionNotice, setLastCompletionNotice] =
+    useState<CompletionNotice | null>(null);
 
   useEffect(() => {
     setStats(storage.loadStats());
     setWeaknesses(storage.loadWeaknesses());
     setSessions(storage.loadSessions());
     setMaterials(storage.loadMaterials());
+    setGamification(storage.loadGamification());
   }, []);
 
   /** 세트 생성 완료 → 자료·세트를 현재 진행 상태로 지정하고 풀이 화면으로 이동 */
@@ -103,9 +120,23 @@ export function useEduTrain() {
     storage.saveStats(nextStats);
     storage.saveWeaknesses(nextWeaknesses);
 
+    const prevGamification = storage.loadGamification();
+    const nextGamification = recordSessionGamification(
+      prevGamification,
+      currentSet.questions,
+      results,
+      todayString(),
+    );
+    storage.saveGamification(nextGamification);
+
     setSessions(nextSessions);
     setStats(nextStats);
     setWeaknesses(nextWeaknesses);
+    setGamification(nextGamification);
+    setLastCompletionNotice({
+      newBadges: newlyEarnedBadges(prevGamification.tagCounts, nextGamification.tagCounts),
+      leveledUp: didLevelUp(prevGamification.levelScore, nextGamification.levelScore),
+    });
     setScreen("result");
   }, [currentSet, currentMaterial, results]);
 
@@ -120,6 +151,8 @@ export function useEduTrain() {
     sessions,
     weaknesses,
     materials,
+    gamification,
+    lastCompletionNotice,
     activeWeakTags: activeWeakTags(weaknesses),
     startSet,
     recordResult,
