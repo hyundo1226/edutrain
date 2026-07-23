@@ -101,7 +101,7 @@
   - route 응답에 API 키 문자열이 포함되지 않고, 키는 서버 env에서만 읽힘(클라이언트 import 경로에 없음) `[INV-1]`
   - `bun run typecheck`
 
-### Task 2: 서술형 채점 엔진 (Gemini) — 고위험
+### Task 2: 서술형 채점 엔진 (Gemini) — 고위험 ✅
 
 - **담당 판정 기준**: S3-1
 - **크기**: S

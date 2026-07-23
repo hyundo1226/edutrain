@@ -14,7 +14,7 @@ vi.mock("@google/genai", () => ({
   Type: new Proxy({}, { get: (_t, p) => p }),
 }));
 
-import { generateQuestions } from "@/services/gemini";
+import { generateQuestions, gradeEssay } from "@/services/gemini";
 
 function mockQuestions(qs: Array<Partial<Question>>) {
   generateContentMock.mockResolvedValueOnce({ text: JSON.stringify(qs) });
@@ -88,5 +88,35 @@ describe("generateQuestions", () => {
     });
 
     expect(JSON.stringify(questions)).not.toContain("test-secret-key-abc123");
+  });
+});
+
+describe("gradeEssay", () => {
+  beforeEach(() => {
+    generateContentMock.mockReset();
+    process.env.GEMINI_API_KEY = "test-secret-key-abc123";
+  });
+
+  it("[S3-1] 답안을 채점하면 { score: 0~100, feedback: string } 형태로 반환한다", async () => {
+    generateContentMock.mockResolvedValueOnce({
+      text: JSON.stringify({ score: 72, feedback: "핵심은 맞았으나 근거가 부족합니다." }),
+    });
+
+    const grade = await gradeEssay({ prompt: "설명하라", rubric: "핵심 개념 포함", answer: "내 답안" });
+
+    expect(grade.score).toBeGreaterThanOrEqual(0);
+    expect(grade.score).toBeLessThanOrEqual(100);
+    expect(grade.score).toBe(72);
+    expect(typeof grade.feedback).toBe("string");
+    expect(grade.feedback.length).toBeGreaterThan(0);
+  });
+
+  it("[S3-1] 모델이 범위를 벗어난 점수를 주면 0~100으로 클램프한다", async () => {
+    generateContentMock.mockResolvedValueOnce({
+      text: JSON.stringify({ score: 140, feedback: "훌륭합니다." }),
+    });
+
+    const grade = await gradeEssay({ prompt: "Q", answer: "A" });
+    expect(grade.score).toBe(100);
   });
 });
