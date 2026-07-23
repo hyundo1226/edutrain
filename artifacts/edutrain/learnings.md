@@ -47,3 +47,27 @@ date: 2026-07-23
 **지시문**: plan이 상태 훅(use-edutrain.ts)을 데이터 레이어 Task와 UI Task 양쪽에 배치했다면, 훅은 UI가 처음 소비하는 Task에서 만들어라. 데이터 레이어 Task의 판정 기준이 순수 lib 테스트로 전부 증명되면 훅은 배선일 뿐이고, 미리 만든 스켈레톤은 UI에서 재작성된다.
 **에피소드**: Task 4가 hooks/use-edutrain.ts를 구현 대상에 포함했으나, S5-5·S6-2·INV-2·INV-3가 lib/stats·weakness·storage 순수 테스트로 전부 증명되어 훅을 Task 5로 이연.
 **증거**: commit fc31b44 계열, lib/{stats,weakness,storage}.test.ts 통과. 훅 부재로 놓친 커버리지 없음.
+
+---
+triggers: [create-set, fetch mock, hooks/use-edutrain, 화면 컴포넌트, 자료 저장, addMaterial]
+status: verified
+scope: this-repo (edutrain plan)
+date: 2026-07-23
+---
+## 화면 컴포넌트가 자기 완결적으로 fetch+storage를 호출하면 "fetch mock" 테스트가 자연스럽다
+
+**지시문**: plan의 컴포넌트 검증란이 "Testing Library(fetch mock)"라고 명시하면, 그 컴포넌트는 자체적으로 `fetch`와 `lib/storage`의 순수 함수를 직접 호출하게 설계하라. 상태를 상위 hook에 위임하면 테스트가 hook을 모킹해야 해서 명시된 "fetch mock" 방식과 어긋난다. hooks/use-edutrain.ts는 화면 간 공유 상태(현재 화면, 진행 중인 자료·세트)만 얇게 들고, 화면별 네트워크·영속성 호출은 각 컴포넌트가 직접 한다.
+**에피소드**: Task 5의 create-set.tsx를 이 방식으로 설계 — 컴포넌트가 직접 `fetch('/api/generate')`와 `lib/storage.addMaterial`을 호출하고, 완료 시 `onGenerated(material, quizSet)`만 부모에 알린다. 테스트는 `vi.stubGlobal('fetch', ...)`로 5개 케이스 모두 통과.
+**증거**: components/edutrain/create-set.test.tsx [S1-1][S1-2][S1-3][S1-4][S1-6] 5/5 통과
+
+---
+triggers: [Gemini, 429, RESOURCE_EXHAUSTED, prepayment credits, GEMINI_API_KEY, 실제 호출 실패, ai.studio billing]
+status: verified
+scope: this-project (2026-07-23 시점 프로젝트 Gemini 계정)
+date: 2026-07-23
+---
+## 브라우저 실제 검증 중 Gemini 호출이 429(크레딧 소진)로 실패 — 코드 결함 아님
+
+**지시문**: `/api/generate`·`/api/grade` 실제 호출이 실패하면 먼저 서버 로그(`preview_logs`)에서 원인을 확인하라. `RESOURCE_EXHAUSTED`/"prepayment credits are depleted"면 코드가 아니라 계정 결제 문제이므로 재시도·디버깅 대신 사용자에게 AI Studio 결제 확인을 안내하고, 최종 spike(실제 문항 품질·채점 신뢰성 확인)는 크레딧 충전 후로 미룬다.
+**에피소드**: Task 5 브라우저 검증 중 create-set.tsx에서 실제 자료로 세트 생성 시도 → "문제 생성에 실패했습니다" 표시. 서버 로그에서 429 RESOURCE_EXHAUSTED 확인. 동시에 이 실패가 S1-6 에러 처리(일반 메시지 노출, 키 미노출)와 다시 시도 버튼이 실제 오류에서도 올바르게 동작함을 재확인하는 계기가 됨.
+**증거**: preview_logs, `[/api/generate] 생성 실패: Error [ApiError]: ...RESOURCE_EXHAUSTED...status 429`. 최종 Checkpoint의 "실제 Gemini 키로 1회 수동 확인" 항목은 크레딧 충전 필요.
