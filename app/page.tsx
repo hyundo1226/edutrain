@@ -50,6 +50,7 @@ export default function Page() {
       <ResultView
         quizSet={currentSet}
         results={results}
+        hasActiveWeakTags={activeWeakTags.length > 0}
         onRetryWeak={() => goTo("weak-set")}
         onHome={() => goTo("home")}
       />

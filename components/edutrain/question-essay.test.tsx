@@ -80,4 +80,24 @@ describe("QuestionEssay", () => {
     await user.click(screen.getByRole("button", { name: "다시 채점" }));
     await waitFor(() => expect(onGraded).toHaveBeenCalledTimes(1));
   });
+
+  it("점수 80점은 correct=true, 79점은 correct=false로 판정한다 (ESSAY_CORRECT_THRESHOLD 경계, 독립 리뷰에서 발견한 공백)", async () => {
+    mockFetchOnce({ score: 80, feedback: "충분합니다." });
+    const onGraded80 = vi.fn();
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <QuestionEssay question={essayQuestion} onGraded={onGraded80} onNext={vi.fn()} />,
+    );
+    await user.type(screen.getByLabelText("답안"), "답안");
+    await user.click(screen.getByRole("button", { name: "제출" }));
+    await waitFor(() => expect(onGraded80).toHaveBeenCalledWith(expect.objectContaining({ score: 80, correct: true })));
+    unmount();
+
+    mockFetchOnce({ score: 79, feedback: "조금 부족합니다." });
+    const onGraded79 = vi.fn();
+    render(<QuestionEssay question={essayQuestion} onGraded={onGraded79} onNext={vi.fn()} />);
+    await user.type(screen.getByLabelText("답안"), "답안");
+    await user.click(screen.getByRole("button", { name: "제출" }));
+    await waitFor(() => expect(onGraded79).toHaveBeenCalledWith(expect.objectContaining({ score: 79, correct: false })));
+  });
 });

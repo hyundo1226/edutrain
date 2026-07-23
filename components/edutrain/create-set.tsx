@@ -8,13 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { addMaterial } from "@/lib/storage";
-import type {
-  Difficulty,
-  Material,
-  Question,
-  QuestionType,
-  QuizSet,
-} from "@/types/quiz";
+import { useGenerateSet } from "@/hooks/use-generate-set";
+import type { Difficulty, Material, QuestionType, QuizSet } from "@/types/quiz";
 
 const TYPE_OPTIONS: { value: QuestionType; label: string }[] = [
   { value: "mc", label: "객관식" },
@@ -50,9 +45,10 @@ export function CreateSet({
   const [types, setTypes] = useState<QuestionType[]>(["mc", "essay"]);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [count, setCount] = useState(5);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { loading, error, generate } = useGenerateSet();
+  const displayError = validationError ?? error;
 
   function toggleType(type: QuestionType, checked: boolean) {
     setTypes((prev) => {
@@ -70,49 +66,33 @@ export function CreateSet({
 
   async function handleSubmit() {
     if (material.trim().length === 0) {
-      setError("학습자료를 입력하세요");
+      setValidationError("학습자료를 입력하세요");
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ material, types, difficulty, count, weakTags }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(json.error ?? "세트 생성에 실패했습니다");
-        return;
-      }
+    setValidationError(null);
 
-      const questions = json.questions as Question[];
-      // 기존 저장 자료를 그대로 다시 쓰는 경우(내용 미수정) 새 자료로 중복 저장하지 않는다.
-      const reuseExisting =
-        existingMaterial !== undefined && existingMaterial.content === material;
-      const materialRecord: Material = reuseExisting
-        ? existingMaterial
-        : {
-            id: crypto.randomUUID(),
-            title: deriveTitle(material),
-            content: material,
-            createdAt: Date.now(),
-          };
-      if (!reuseExisting) addMaterial(materialRecord);
+    // 기존 저장 자료를 그대로 다시 쓰는 경우(내용 미수정) 새 자료로 중복 저장하지 않는다.
+    // 앞뒤 공백 차이(재붙여넣기 등)까지는 같은 자료로 취급한다.
+    const reuseExisting =
+      existingMaterial !== undefined &&
+      existingMaterial.content.trim() === material.trim();
+    const materialRecord: Material = reuseExisting
+      ? existingMaterial
+      : {
+          id: crypto.randomUUID(),
+          title: deriveTitle(material),
+          content: material,
+          createdAt: Date.now(),
+        };
 
-      const quizSet: QuizSet = {
-        id: crypto.randomUUID(),
-        materialId: materialRecord.id,
-        questions,
-        createdAt: Date.now(),
-      };
-      onGenerated(materialRecord, quizSet);
-    } catch {
-      setError("세트 생성에 실패했습니다");
-    } finally {
-      setLoading(false);
-    }
+    const quizSet = await generate(
+      { material, types, difficulty, count, weakTags },
+      materialRecord.id,
+    );
+    if (!quizSet) return;
+
+    if (!reuseExisting) addMaterial(materialRecord);
+    onGenerated(materialRecord, quizSet);
   }
 
   return (
@@ -147,7 +127,9 @@ export function CreateSet({
           placeholder="여기에 학습자료 텍스트를 붙여넣기…"
           className="min-h-32"
         />
-        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
+        {displayError && (
+          <p className="mt-1 text-sm text-destructive">{displayError}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
@@ -206,7 +188,7 @@ export function CreateSet({
       </div>
 
       <Button className="w-full" onClick={handleSubmit} disabled={loading}>
-        {loading ? "생성 중…" : error ? "다시 시도" : "세트 생성"}
+        {loading ? "생성 중…" : displayError ? "다시 시도" : "세트 생성"}
       </Button>
     </div>
   );

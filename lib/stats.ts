@@ -23,9 +23,20 @@ export function longestCorrectStreak(results: AnswerResult[]): number {
   return best;
 }
 
+/** prevDate(YYYY-MM-DD) 바로 다음 날이 today인지 (하루 공백 없이 이어지는지) */
+function isNextDay(prevDate: string, today: string): boolean {
+  if (!prevDate) return false;
+  const prev = new Date(`${prevDate}T00:00:00`);
+  const next = new Date(`${today}T00:00:00`);
+  const diffDays = Math.round((next.getTime() - prev.getTime()) / 86_400_000);
+  return diffDays === 1;
+}
+
 /**
  * 세트 완료 시 통계를 갱신한다.
- * - lastStudyDate가 오늘이 아니면 streakDays +1 (오늘 첫 완료), 이미 오늘이면 불변 (S5-5)
+ * - 오늘 이미 완료했으면 streakDays 불변 (S5-5)
+ * - lastStudyDate 바로 다음 날이면 streakDays +1 (연속 학습)
+ * - 그 외(하루 이상 공백, 최초 완료)에는 1로 리셋 — 며칠을 건너뛰어도 계속 증가하는 버그 방지
  * - bestCorrectStreak는 이번 세트의 최장 연속 정답과 기존 값 중 큰 값을 유지
  */
 export function recordSessionStats(
@@ -33,8 +44,14 @@ export function recordSessionStats(
   params: { score: number; results: AnswerResult[]; today: string },
 ): Stats {
   const { score, results, today } = params;
-  const streakDays =
-    prev.lastStudyDate === today ? prev.streakDays : prev.streakDays + 1;
+  let streakDays: number;
+  if (prev.lastStudyDate === today) {
+    streakDays = prev.streakDays;
+  } else if (isNextDay(prev.lastStudyDate, today)) {
+    streakDays = prev.streakDays + 1;
+  } else {
+    streakDays = 1;
+  }
   const sessionBest = longestCorrectStreak(results);
   return {
     cumulativeScore: prev.cumulativeScore + score,

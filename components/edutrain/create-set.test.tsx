@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateSet } from "@/components/edutrain/create-set";
+import { loadMaterials } from "@/lib/storage";
+import type { Material } from "@/types/quiz";
 
 function mockFetchOnce(body: unknown, ok = true, status = ok ? 200 : 500) {
   vi.stubGlobal(
@@ -109,5 +111,55 @@ describe("CreateSet", () => {
     expect(await screen.findByText("문제 생성에 실패했습니다")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
     expect(onGenerated).not.toHaveBeenCalled();
+  });
+
+  it("existingMaterial을 내용 변경 없이 재사용하면 새 자료로 중복 저장하지 않는다 (독립 리뷰에서 발견)", async () => {
+    const existing: Material = {
+      id: "m-existing",
+      title: "기존 자료",
+      content: "기존 자료 본문",
+      createdAt: 1,
+    };
+    mockFetchOnce({
+      questions: [
+        { id: "1", type: "mc", prompt: "P1", tags: ["t"], difficulty: "medium", choices: ["a"], answer: "a" },
+      ],
+    });
+    const onGenerated = vi.fn();
+    const user = userEvent.setup();
+    render(<CreateSet existingMaterial={existing} onGenerated={onGenerated} />);
+
+    expect(screen.getByLabelText("학습자료")).toHaveValue("기존 자료 본문");
+    await user.click(screen.getByRole("button", { name: "세트 생성" }));
+
+    await waitFor(() => expect(onGenerated).toHaveBeenCalledTimes(1));
+    const [material] = onGenerated.mock.calls[0];
+    expect(material).toBe(existing); // 같은 참조 재사용, 새 id 아님
+    expect(loadMaterials()).toHaveLength(0); // storage.addMaterial이 다시 호출되지 않음
+  });
+
+  it("existingMaterial의 내용을 수정하고 제출하면 새 자료로 저장된다", async () => {
+    const existing: Material = {
+      id: "m-existing",
+      title: "기존 자료",
+      content: "기존 자료 본문",
+      createdAt: 1,
+    };
+    mockFetchOnce({
+      questions: [
+        { id: "1", type: "mc", prompt: "P1", tags: ["t"], difficulty: "medium", choices: ["a"], answer: "a" },
+      ],
+    });
+    const onGenerated = vi.fn();
+    const user = userEvent.setup();
+    render(<CreateSet existingMaterial={existing} onGenerated={onGenerated} />);
+
+    await user.type(screen.getByLabelText("학습자료"), " 추가 내용");
+    await user.click(screen.getByRole("button", { name: "세트 생성" }));
+
+    await waitFor(() => expect(onGenerated).toHaveBeenCalledTimes(1));
+    const [material] = onGenerated.mock.calls[0];
+    expect(material.id).not.toBe(existing.id);
+    expect(loadMaterials()).toHaveLength(1);
   });
 });

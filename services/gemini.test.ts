@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Question } from "@/types/quiz";
 
 // @google/genai 모듈을 mock한다. 실제 네트워크 호출 없이 파싱·프롬프트만 검증한다.
@@ -88,6 +88,28 @@ describe("generateQuestions", () => {
     });
 
     expect(JSON.stringify(questions)).not.toContain("test-secret-key-abc123");
+  });
+});
+
+describe("getClient 에러 경로 (독립 리뷰에서 발견한 커버리지 공백)", () => {
+  const originalKey = process.env.GEMINI_API_KEY;
+
+  afterEach(() => {
+    process.env.GEMINI_API_KEY = originalKey;
+  });
+
+  it("GEMINI_API_KEY가 없으면 generateQuestions가 명확한 에러로 실패한다", async () => {
+    delete process.env.GEMINI_API_KEY;
+    await expect(
+      generateQuestions({ material: "자료", types: ["mc"], difficulty: "medium", count: 1 }),
+    ).rejects.toThrow("GEMINI_API_KEY");
+  });
+
+  it("GEMINI_API_KEY가 없으면 gradeEssay도 명확한 에러로 실패한다", async () => {
+    delete process.env.GEMINI_API_KEY;
+    await expect(gradeEssay({ prompt: "Q", answer: "A" })).rejects.toThrow(
+      "GEMINI_API_KEY",
+    );
   });
 });
 

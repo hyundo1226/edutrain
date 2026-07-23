@@ -29,6 +29,14 @@ describe("recordSessionStats", () => {
     expect(next.streakDays).toBe(4);
   });
 
+  it("[S5-5] 하루 이상 건너뛰고 완료하면 연속 학습일이 1로 리셋된다 (독립 리뷰에서 발견)", () => {
+    const next = recordSessionStats(
+      { ...EMPTY_STATS, lastStudyDate: "2026-07-10", streakDays: 9 },
+      { score: 100, results: [r(true)], today: "2026-07-23" },
+    );
+    expect(next.streakDays).toBe(1);
+  });
+
   it("누적 점수를 더하고 최고 연속 정답을 갱신한다", () => {
     const next = recordSessionStats(
       { ...EMPTY_STATS, cumulativeScore: 500, bestCorrectStreak: 2 },
