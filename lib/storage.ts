@@ -1,12 +1,20 @@
 // localStorage 영속성. 브라우저 전용 (SSR 가드). 의존성: types.
-import type { Material, SessionRecord, Stats, WeaknessEntry } from "@/types/quiz";
+import type {
+  GamificationState,
+  Material,
+  SessionRecord,
+  Stats,
+  WeaknessEntry,
+} from "@/types/quiz";
 import { EMPTY_STATS } from "@/lib/stats";
+import { EMPTY_GAMIFICATION } from "@/lib/gamification";
 
 const KEYS = {
   materials: "edutrain:materials",
   sessions: "edutrain:sessions",
   stats: "edutrain:stats",
   weaknesses: "edutrain:weaknesses",
+  gamification: "edutrain:gamification",
 } as const;
 
 function read<T>(key: string, fallback: T): T {
@@ -65,6 +73,14 @@ export function loadWeaknesses(): WeaknessEntry[] {
 }
 export function saveWeaknesses(entries: WeaknessEntry[]): void {
   write(KEYS.weaknesses, entries);
+}
+
+// ---- Gamification ----
+export function loadGamification(): GamificationState {
+  return read<GamificationState>(KEYS.gamification, EMPTY_GAMIFICATION);
+}
+export function saveGamification(state: GamificationState): void {
+  write(KEYS.gamification, state);
 }
 
 /** 테스트·초기화용: 모든 EduTrain 로컬 데이터 제거 */
