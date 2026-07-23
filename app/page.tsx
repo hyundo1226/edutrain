@@ -17,6 +17,7 @@ export default function Page() {
     stats,
     sessions,
     materials,
+    gamification,
     activeWeakTags,
     startSet,
     recordResult,
@@ -72,6 +73,7 @@ export default function Page() {
       stats={stats}
       sessions={sessions}
       materials={materials}
+      gamification={gamification}
       onCreateNew={startCreateNew}
       onSelectMaterial={selectMaterial}
     />

@@ -1,13 +1,15 @@
 "use client";
 
-// 홈: 누적 점수·스트릭·지난 세션 이력·저장 자료 목록.
+// 홈: 누적 점수·스트릭·지난 세션 이력·저장 자료 목록 + 게임화(잔디·배지·레벨).
 import { Button } from "@/components/ui/button";
-import type { Material, SessionRecord, Stats } from "@/types/quiz";
+import { GrassCalendar } from "@/components/edutrain/grass-calendar";
+import type { GamificationState, Material, SessionRecord, Stats } from "@/types/quiz";
 
 export interface HomeProps {
   stats: Stats;
   sessions: SessionRecord[];
   materials: Material[];
+  gamification: GamificationState;
   onCreateNew: () => void;
   onSelectMaterial: (material: Material) => void;
 }
@@ -16,6 +18,7 @@ export function Home({
   stats,
   sessions,
   materials,
+  gamification,
   onCreateNew,
   onSelectMaterial,
 }: HomeProps) {
@@ -42,6 +45,11 @@ export function Home({
           <div className="text-xs text-muted-foreground">최고 연속 정답</div>
           <div className="text-2xl font-bold">{stats.bestCorrectStreak}</div>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="text-xs text-muted-foreground mb-2">학습 잔디 (최근 1년)</div>
+        <GrassCalendar dailyActivity={gamification.dailyActivity} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
