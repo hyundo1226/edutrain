@@ -1,6 +1,42 @@
 # edutrain learnings
 
 ---
+triggers: [연속 학습일, streak, lastStudyDate, 스트릭 리셋, 하루 건너뛰기, code-review 발견]
+status: verified
+scope: this-repo (lib/stats.ts)
+date: 2026-07-23
+---
+## "연속 학습일" 로직은 "오늘인가 아닌가"만으로는 부족하다 — 하루 공백 리셋을 명시적으로 계산해야 한다
+
+**지시문**: streak(연속 일수) 필드를 다룰 때 `lastDate === today ? 불변 : +1` 패턴만 쓰면, 며칠을 건너뛰어도 계속 +1이 되는 버그가 생긴다. `오늘==마지막날짜 → 불변`, `마지막날짜의 바로 다음날 → +1`, `그 외(공백·최초) → 1로 리셋` 세 갈래로 분기하라.
+**에피소드**: 독립 code-review 에이전트(Task 12)가 `recordSessionStats`에서 이 버그를 지적. 10일 공백 후 완료해도 streakDays가 계속 증가함을 재현 테스트로 확인 후 `isNextDay` 헬퍼 추가로 수정.
+**증거**: commit 99e2a0f, lib/stats.test.ts "하루 이상 건너뛰고 완료하면 연속 학습일이 1로 리셋된다" 통과
+
+---
+triggers: [약점 태그 불일치, weakTagsFromResults, activeWeakTags, 세션 로컬 vs 전역, 약점만 다시 풀기, 빈 약점 세트]
+status: verified
+scope: this-repo (edutrain plan)
+date: 2026-07-23
+---
+## 화면 전환의 "버튼 활성화 조건"과 "다음 화면이 실제로 쓰는 데이터"는 같은 소스여야 한다
+
+**지시문**: A 화면의 버튼이 B 화면으로 이동하면서 데이터도 함께 규정한다면(여기선 "약점만 다시 풀기" → 약점 태그로 재출제), 버튼의 disabled 조건과 B 화면이 실제로 쓰는 데이터는 반드시 같은 상태 소스에서 파생시켜라. 서로 다른 스코프(세션-로컬 vs 전역-누적)의 값을 각각 쓰면, 버튼은 켜져 있는데 다음 화면엔 아무것도 없는 불일치가 생긴다.
+**에피소드**: ResultView의 "약점만 다시 풀기" 버튼은 `weakTagsFromResults`(이번 세션 오답)로 활성화 여부를 정했지만, 실제 WeakSetPreview는 `activeWeakTags`(전역 누적, completeSet 이후 mastered 반영)를 쓴다. 같은 세트 안에서 같은 태그를 틀렸다 맞히면 세션-로컬 상 "약점 있음"이지만 전역상 "이미 극복"이라 버튼과 다음 화면이 어긋난다. 독립 code-review 에이전트가 지적. `hasActiveWeakTags` prop을 추가해 page.tsx가 hook의 `activeWeakTags`를 버튼에도 그대로 넘기도록 수정.
+**증거**: commit 99e2a0f, result-view.test.tsx의 hasActiveWeakTags=false 테스트, 브라우저 실증(같은 태그 문항 오답→정답 세트 완료 후 결과 화면에서 disabled:true, weaknesses에 mastered:true 확인)
+
+---
+triggers: [독립 리뷰 프로세스, code-review 스킬 미등록, security-review, 서브에이전트 위임]
+status: verified
+scope: this-session (harness 설정)
+date: 2026-07-23
+---
+## 이 세션엔 `/code-review` 스킬이 등록돼 있지 않다 — general-purpose 에이전트로 대체한다
+
+**지시문**: execute-plan Step 4가 "/code-review 스킬 실행"을 지시하지만, Skill 목록에 없으면(`disable-model-invocation` 에러) general-purpose 에이전트에게 "diff 범위 + 파일 목록 + 체크리스트"를 직접 프롬프트로 구성해 위임하라. `/security-review`는 이 세션에서 정상 동작했다.
+**에피소드**: Task 12에서 `Skill({skill:"code-review"})` 호출이 `Skill code-review cannot be used with Skill tool due to disable-model-invocation` 에러로 실패. general-purpose 에이전트에 6cf1629..HEAD diff 리뷰를 위임해 동등한 결과를 얻음(스트릭 버그·약점 불일치·중복·테스트 공백 4건 발견, 전부 반영).
+**증거**: 이 세션의 도구 목록(review/security-review만 노출, code-review 없음), Task 12 에이전트 리뷰 결과
+
+---
 triggers: [getByRole, accessible name, radio, 라벨 텍스트 변경, locked, 채점 결과 표시]
 status: verified
 scope: this-repo (testing-library + radix RadioGroupItem)
