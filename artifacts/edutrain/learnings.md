@@ -1,6 +1,28 @@
 # edutrain learnings
 
 ---
+triggers: [getByRole, accessible name, radio, 라벨 텍스트 변경, locked, 채점 결과 표시]
+status: verified
+scope: this-repo (testing-library + radix RadioGroupItem)
+date: 2026-07-23
+---
+## 채점 후 라디오 라벨에 "✓ 정답" 같은 상태 텍스트를 덧붙이면 접근 가능한 이름이 바뀌어 getByRole 매칭이 깨진다
+
+**지시문**: `<label><RadioGroupItem/><span>{선택지}</span>{조건부 상태 텍스트}</label>` 패턴에서, 상태 텍스트가 라벨 안에 있으면 그 라디오의 accessible name에 병합된다. 채점 전/후 모두를 매칭해야 하는 테스트는 `getByRole("radio", { name: "정확한 문자열" })` 대신 `{ name: /^접두어/ }` 정규식을 써라.
+**에피소드**: Task 6 question-objective.test.tsx의 S2-4 테스트에서 채점 후 `getByRole("radio", { name: "list" })`가 실패 — 실제 접근 이름이 "list ✓ 정답"으로 바뀌어 있었다.
+**증거**: components/edutrain/question-objective.test.tsx [S2-4], `{ name: /^list/ }`로 수정 후 3/3 통과
+
+---
+triggers: [use-edutrain, quiz-runner, 결과 상태 소유, 중복 state, recordResult]
+status: verified
+scope: this-repo (edutrain plan)
+date: 2026-07-23
+---
+## 세션 전체에 걸친 결과 배열은 화면 컴포넌트가 아니라 공유 hook이 소유해야 한다
+
+**지시문**: 여러 문항에 걸쳐 누적되는 상태(채점 결과 목록)는 quiz-runner 같은 화면 컴포넌트의 로컬 state로 두지 말고 hooks/use-edutrain.ts로 올려라. 화면 컴포넌트는 문항 단위 콜백(`onGraded`)만 상위로 전달하고, 완료 시점(`onComplete`)도 인자 없이 호출해 hook이 이미 들고 있는 결과를 그대로 쓰게 한다. 그래야 T8(결과 화면)이 같은 hook 인스턴스에서 결과를 그대로 읽을 수 있다.
+**에피소드**: Task 6에서 처음엔 quiz-runner.tsx가 `results` state를 자체로 들고 완료 시 배열을 넘기도록 설계했다가, hook으로 옮겨 `recordResult` 액션으로 통일. app/page.tsx가 결과 화면에서 `results`를 그대로 재사용할 수 있게 됨.
+**증거**: hooks/use-edutrain.ts (results/recordResult), app/page.tsx의 result 플레이스홀더가 `scoreSet(results)`로 정상 집계 (브라우저 수동 확인: 200/200 100% — 2/2 정답)
 triggers: [vitest, "is not a constructor", "@google/genai", GoogleGenAI, vi.mock, mock class]
 status: verified
 scope: this-repo (vitest 4.x, @google/genai 2.x)
