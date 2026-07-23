@@ -67,6 +67,16 @@ export interface WeaknessEntry {
   mastered: boolean;
 }
 
+/**
+ * 게임화(잔디·관심사 배지·레벨) 상태. 기존 Stats/SessionRecord와 완전히 독립된 저장소 —
+ * 이 기능 도입 이전 학습 이력은 담지 않는다(INV-1, artifacts/gamification/spec.md).
+ */
+export interface GamificationState {
+  levelScore: number; // 이 기능 도입 이후 누적 점수 (레벨 계산 전용, cumulativeScore와 별개)
+  tagCounts: Record<string, number>; // 태그 → 이 기능 도입 이후 그 태그 문항을 푼 총 횟수(정답/오답 무관)
+  dailyActivity: Record<string, number>; // "YYYY-MM-DD" → 그 날 푼 문항 수 합계
+}
+
 // ---- 엔진 API 계약 ----
 
 /** POST /api/generate 요청 본문 */

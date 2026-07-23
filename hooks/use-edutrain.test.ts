@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useEduTrain } from "@/hooks/use-edutrain";
-import { loadSessions, loadStats, loadWeaknesses } from "@/lib/storage";
+import { loadSessions, loadStats, loadWeaknesses, loadGamification } from "@/lib/storage";
 import type { AnswerResult, Material, QuizSet } from "@/types/quiz";
 
 const material: Material = {
@@ -99,6 +99,87 @@ describe("useEduTrain", () => {
     expect(loadSessions()).toHaveLength(1);
     expect(loadStats().cumulativeScore).toBe(100);
     expect(loadWeaknesses().some((w) => w.tag === "B" && !w.mastered)).toBe(true);
+  });
+
+  it("[INV-2] completeSet은 게임화 상태(레벨 점수·태그 카운트)도 영속화하고 훅 state에 반영한다", () => {
+    const { result } = renderHook(() => useEduTrain());
+
+    act(() => {
+      result.current.startSet(material, mkQuizSet());
+    });
+    act(() => {
+      result.current.recordResult(r("q1", true));
+      result.current.recordResult(r("q2", false));
+    });
+    act(() => {
+      result.current.completeSet();
+    });
+
+    expect(result.current.gamification.levelScore).toBe(100);
+    expect(result.current.gamification.tagCounts).toEqual({ A: 1, B: 1 });
+    expect(loadGamification().levelScore).toBe(100);
+    expect(loadGamification().tagCounts).toEqual({ A: 1, B: 1 });
+  });
+
+  it("[S3-1] 태그 문항을 10개 채우는 세트를 완료하면 lastCompletionNotice.newBadges에 그 태그가 담긴다", () => {
+    const { result } = renderHook(() => useEduTrain());
+    const tenQuestionSet: QuizSet = {
+      id: "set-badge",
+      materialId: "m1",
+      createdAt: 1,
+      questions: Array.from({ length: 10 }, (_, i) => ({
+        id: `bq${i}`,
+        type: "mc" as const,
+        prompt: `Q${i}`,
+        tags: ["이진탐색"],
+        difficulty: "medium" as const,
+        choices: ["x"],
+        answer: "x",
+      })),
+    };
+
+    act(() => {
+      result.current.startSet(material, tenQuestionSet);
+    });
+    act(() => {
+      tenQuestionSet.questions.forEach((q) => result.current.recordResult(r(q.id, true)));
+    });
+    act(() => {
+      result.current.completeSet();
+    });
+
+    expect(result.current.lastCompletionNotice?.newBadges).toEqual(["이진탐색"]);
+  });
+
+  it("[S7] 누적 레벨 점수가 500점 경계를 넘기는 세트를 완료하면 lastCompletionNotice.leveledUp이 true다", () => {
+    const { result } = renderHook(() => useEduTrain());
+    const fiveCorrectMc: QuizSet = {
+      id: "set-level",
+      materialId: "m1",
+      createdAt: 1,
+      questions: Array.from({ length: 5 }, (_, i) => ({
+        id: `lq${i}`,
+        type: "mc" as const,
+        prompt: `Q${i}`,
+        tags: ["C"],
+        difficulty: "medium" as const,
+        choices: ["x"],
+        answer: "x",
+      })),
+    };
+
+    act(() => {
+      result.current.startSet(material, fiveCorrectMc);
+    });
+    act(() => {
+      fiveCorrectMc.questions.forEach((q) => result.current.recordResult(r(q.id, true)));
+    });
+    act(() => {
+      result.current.completeSet();
+    });
+
+    expect(result.current.gamification.levelScore).toBe(500);
+    expect(result.current.lastCompletionNotice?.leveledUp).toBe(true);
   });
 
   it("currentSet/currentMaterial이 없는 상태에서 completeSet을 호출하면 저장 없이 result 화면으로만 이동한다", () => {

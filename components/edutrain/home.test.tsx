@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Home } from "@/components/edutrain/home";
+import { EMPTY_GAMIFICATION } from "@/lib/gamification";
 import type { Material, SessionRecord, Stats } from "@/types/quiz";
 
 const stats: Stats = {
@@ -24,14 +25,14 @@ const sessions: SessionRecord[] = [
 describe("Home", () => {
   it("[S5-1] 누적 점수가 표시된다", () => {
     render(
-      <Home stats={stats} sessions={sessions} materials={materials} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
+      <Home stats={stats} sessions={sessions} materials={materials} gamification={EMPTY_GAMIFICATION} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
     );
     expect(screen.getByText("1240")).toBeInTheDocument();
   });
 
   it("[S5-2] 스트릭(연속 학습일 + 최고 연속 정답)이 둘 다 표시된다", () => {
     render(
-      <Home stats={stats} sessions={sessions} materials={materials} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
+      <Home stats={stats} sessions={sessions} materials={materials} gamification={EMPTY_GAMIFICATION} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
     );
     expect(screen.getByText(/5일/)).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
@@ -39,7 +40,7 @@ describe("Home", () => {
 
   it("[S5-3] 지난 세션들의 점수 목록(추이)이 표시된다", () => {
     render(
-      <Home stats={stats} sessions={sessions} materials={materials} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
+      <Home stats={stats} sessions={sessions} materials={materials} gamification={EMPTY_GAMIFICATION} onCreateNew={vi.fn()} onSelectMaterial={vi.fn()} />,
     );
     expect(screen.getByText("80%")).toBeInTheDocument(); // s1: 400/500
     expect(screen.getByText("60%")).toBeInTheDocument(); // s2: 300/500
@@ -51,7 +52,7 @@ describe("Home", () => {
     const onSelectMaterial = vi.fn();
     const user = userEvent.setup();
     render(
-      <Home stats={stats} sessions={sessions} materials={materials} onCreateNew={vi.fn()} onSelectMaterial={onSelectMaterial} />,
+      <Home stats={stats} sessions={sessions} materials={materials} gamification={EMPTY_GAMIFICATION} onCreateNew={vi.fn()} onSelectMaterial={onSelectMaterial} />,
     );
 
     await user.click(screen.getByRole("button", { name: /파이썬 기초 정리/ }));
