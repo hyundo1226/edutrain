@@ -83,6 +83,18 @@ date: 2026-07-23
 **지시문**: 이는 activeWeakTags(mastered 아니고 wrongCount>0 필터)에는 영향 없어 현재 기준 충족에는 문제없지만, 세션이 누적되면 weaknesses 배열이 "한 번이라도 맞은 모든 태그"까지 담아 계속 커진다. 저장 용량·표시 성능이 문제되면 `updateWeaknesses`에서 correct인데 기존 엔트리가 없으면 아예 새로 만들지 않도록 바꿔라.
 **에피소드**: Task 8 브라우저 검증에서 "가변성"(정답, 이전 약점 아님)이 `{wrongCount:0, mastered:true}`로 저장됨을 확인.
 **증거**: 브라우저 localStorage 덤프. 아직 실사용 규모에서 문제 재현 안 됨 — hypothesis로 유지.
+
+---
+triggers: [hydration, "Hydration failed", useState 초기화, localStorage useState, SSR CSR mismatch, Next.js dev overlay, "1 Issue"]
+status: verified
+scope: this-repo (Next.js 16 App Router, 클라이언트 컴포넌트가 localStorage를 읽는 훅)
+date: 2026-07-23
+---
+## localStorage를 읽는 값을 useState 초기화 함수에 직접 넣으면 hydration mismatch가 난다
+
+**지시문**: `useState(() => storage.loadX())`처럼 브라우저 전용 API(localStorage)를 useState 초기화 함수에서 직접 호출하지 마라. SSR에서는 `window===undefined`라 fallback(빈 값)을 반환하지만, 클라이언트 첫 렌더에서는 실제 값을 반환해 서버 렌더 결과와 달라져 React가 "Hydration failed" 오류를 낸다. 대신 `useState(EMPTY_VALUE)`로 SSR과 동일한 초기값을 주고, `useEffect(() => { setX(storage.loadX()) }, [])`로 마운트 후에 채워라.
+**에피소드**: Task 9에서 hooks/use-edutrain.ts의 stats/weaknesses/sessions/materials를 `useState(() => storage.loadX())`로 초기화했다가, 브라우저 검증 중 Next.js dev overlay가 "Hydration failed... <div>100</div> vs <div>0</div>" 에러를 표시. useEffect로 옮겨 해결.
+**증거**: hooks/use-edutrain.ts, 브라우저 재확인(에러 배지 사라짐, 콘솔 에러 0). 컴포넌트 단위 테스트(Testing Library, jsdom)는 SSR을 흉내내지 않아 이 버그를 잡지 못했다 — localStorage를 초기 렌더에서 읽는 훅은 반드시 실제 브라우저(Next dev 서버)로 검증해야 한다.
 triggers: [vitest, "is not a constructor", "@google/genai", GoogleGenAI, vi.mock, mock class]
 status: verified
 scope: this-repo (vitest 4.x, @google/genai 2.x)

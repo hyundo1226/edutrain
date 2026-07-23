@@ -36,11 +36,17 @@ function deriveTitle(content: string): string {
 export interface CreateSetProps {
   /** 약점만 다시 풀기 등에서 우선 출제할 태그 (S6-1) */
   weakTags?: string[];
+  /** 홈에서 저장 자료를 선택해 진입한 경우 (S5-4) — 자료 입력 영역에 미리 채워진다 */
+  existingMaterial?: Material;
   onGenerated: (material: Material, quizSet: QuizSet) => void;
 }
 
-export function CreateSet({ weakTags, onGenerated }: CreateSetProps) {
-  const [material, setMaterial] = useState("");
+export function CreateSet({
+  weakTags,
+  existingMaterial,
+  onGenerated,
+}: CreateSetProps) {
+  const [material, setMaterial] = useState(existingMaterial?.content ?? "");
   const [types, setTypes] = useState<QuestionType[]>(["mc", "essay"]);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [count, setCount] = useState(5);
@@ -82,13 +88,18 @@ export function CreateSet({ weakTags, onGenerated }: CreateSetProps) {
       }
 
       const questions = json.questions as Question[];
-      const materialRecord: Material = {
-        id: crypto.randomUUID(),
-        title: deriveTitle(material),
-        content: material,
-        createdAt: Date.now(),
-      };
-      addMaterial(materialRecord);
+      // 기존 저장 자료를 그대로 다시 쓰는 경우(내용 미수정) 새 자료로 중복 저장하지 않는다.
+      const reuseExisting =
+        existingMaterial !== undefined && existingMaterial.content === material;
+      const materialRecord: Material = reuseExisting
+        ? existingMaterial
+        : {
+            id: crypto.randomUUID(),
+            title: deriveTitle(material),
+            content: material,
+            createdAt: Date.now(),
+          };
+      if (!reuseExisting) addMaterial(materialRecord);
 
       const quizSet: QuizSet = {
         id: crypto.randomUUID(),

@@ -1,12 +1,12 @@
 "use client";
 
-// 클라이언트 셸 + 화면 전환. T9(홈)에서 홈 화면이 실제 구현으로 교체된다.
+// 클라이언트 셸 + 화면 전환.
 import { useEduTrain } from "@/hooks/use-edutrain";
 import { CreateSet } from "@/components/edutrain/create-set";
 import { QuizRunner } from "@/components/edutrain/quiz-runner";
 import { ResultView } from "@/components/edutrain/result-view";
 import { WeakSetPreview } from "@/components/edutrain/weak-set-preview";
-import { Button } from "@/components/ui/button";
+import { Home } from "@/components/edutrain/home";
 
 export default function Page() {
   const {
@@ -14,15 +14,25 @@ export default function Page() {
     currentMaterial,
     currentSet,
     results,
+    stats,
+    sessions,
+    materials,
     activeWeakTags,
     startSet,
     recordResult,
     completeSet,
+    selectMaterial,
+    startCreateNew,
     goTo,
   } = useEduTrain();
 
   if (screen === "create") {
-    return <CreateSet onGenerated={startSet} />;
+    return (
+      <CreateSet
+        existingMaterial={currentMaterial ?? undefined}
+        onGenerated={startSet}
+      />
+    );
   }
 
   if (screen === "quiz" && currentSet) {
@@ -56,13 +66,13 @@ export default function Page() {
     );
   }
 
-  // 홈 (T9에서 실제 통계·저장 자료 화면으로 교체된다)
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div className="text-xl font-bold">EduTrain</div>
-        <Button onClick={() => goTo("create")}>+ 새 세트 만들기</Button>
-      </div>
-    </div>
+    <Home
+      stats={stats}
+      sessions={sessions}
+      materials={materials}
+      onCreateNew={startCreateNew}
+      onSelectMaterial={selectMaterial}
+    />
   );
 }

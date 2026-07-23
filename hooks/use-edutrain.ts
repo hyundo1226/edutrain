@@ -1,8 +1,7 @@
 "use client";
 
 // 화면 전환 + 현재 진행 중인 자료·세트·채점 결과 상태. 의존성: types, lib (Architecture 레이어 5).
-// T9(자료 선택)에서 액션이 추가된다.
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AnswerResult,
   Material,
@@ -12,7 +11,7 @@ import type {
   WeaknessEntry,
 } from "@/types/quiz";
 import * as storage from "@/lib/storage";
-import { recordSessionStats } from "@/lib/stats";
+import { EMPTY_STATS, recordSessionStats } from "@/lib/stats";
 import { scoreSet } from "@/lib/scoring";
 import { updateWeaknesses, activeWeakTags } from "@/lib/weakness";
 
@@ -30,20 +29,42 @@ export function useEduTrain() {
   const [currentSet, setCurrentSet] = useState<QuizSet | null>(null);
   const [results, setResults] = useState<AnswerResult[]>([]);
 
-  const [stats, setStats] = useState<Stats>(() => storage.loadStats());
-  const [weaknesses, setWeaknesses] = useState<WeaknessEntry[]>(() =>
-    storage.loadWeaknesses(),
-  );
-  const [sessions, setSessions] = useState<SessionRecord[]>(() =>
-    storage.loadSessions(),
-  );
+  // SSR과 클라이언트 첫 렌더의 hydration mismatch를 피하기 위해, localStorage 값은
+  // useState 초기화 함수가 아니라 마운트 후 useEffect에서 읽는다 (아래 참고).
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
+  const [weaknesses, setWeaknesses] = useState<WeaknessEntry[]>([]);
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
+
+  useEffect(() => {
+    setStats(storage.loadStats());
+    setWeaknesses(storage.loadWeaknesses());
+    setSessions(storage.loadSessions());
+    setMaterials(storage.loadMaterials());
+  }, []);
 
   /** 세트 생성 완료 → 자료·세트를 현재 진행 상태로 지정하고 풀이 화면으로 이동 */
   const startSet = useCallback((material: Material, quizSet: QuizSet) => {
     setCurrentMaterial(material);
     setCurrentSet(quizSet);
     setResults([]);
+    // create-set.tsx/weak-set-preview.tsx가 storage에 직접 저장하므로, 훅의 목록도 함께 동기화한다.
+    setMaterials((prev) =>
+      prev.some((m) => m.id === material.id) ? prev : [material, ...prev],
+    );
     setScreen("quiz");
+  }, []);
+
+  /** 홈에서 저장 자료 선택 → 그 자료로 새 세트를 만들 수 있게 생성 화면으로 이동 (S5-4) */
+  const selectMaterial = useCallback((material: Material) => {
+    setCurrentMaterial(material);
+    setScreen("create");
+  }, []);
+
+  /** "+ 새 세트 만들기" → 이전에 선택된 자료를 지우고 빈 생성 화면으로 이동 */
+  const startCreateNew = useCallback(() => {
+    setCurrentMaterial(null);
+    setScreen("create");
   }, []);
 
   /** 문항 채점 결과를 세션 결과 목록에 기록 (객관식·단답·서술형 공통) */
@@ -98,10 +119,13 @@ export function useEduTrain() {
     stats,
     sessions,
     weaknesses,
+    materials,
     activeWeakTags: activeWeakTags(weaknesses),
     startSet,
     recordResult,
     completeSet,
+    selectMaterial,
+    startCreateNew,
     goTo,
   };
 }
