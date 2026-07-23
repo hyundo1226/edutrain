@@ -47,6 +47,42 @@ date: 2026-07-23
 **지시문**: 브라우저 pane에서 한글 등 비-ASCII 텍스트를 `type`으로 입력했는데 필드에 예상치 못한 대량의 이전 클립보드 텍스트가 나타나면, 코드 버그로 오인하지 말고 `ctrl+a` → `Delete`로 필드를 비운 뒤 재입력해 우회하라. 실제 컴포넌트 로직(제출·채점·결과 반영)은 정상이었다.
 **에피소드**: Task 7 브라우저 검증 중 학습자료 textarea에 CLAUDE.md 관련 긴 텍스트가 삽입됨. 원인은 자동화 도구의 타이핑 방식으로 추정, 컴포넌트 코드와 무관.
 **증거**: 우회 후 서술형 채점~결과 화면까지 정상 동작 확인(72/100, 0/1 정답). 재발 시 이 항목을 verified로 승격.
+
+---
+triggers: [computer type, 한글 입력, textarea 값 설정, javascript_tool, dispatchEvent input, 브라우저 자동화 신뢰성]
+status: verified
+scope: this-session (Claude Browser pane)
+date: 2026-07-23
+---
+## 브라우저 자동화로 폼 필드에 한글 텍스트를 넣을 땐 computer.type보다 javascript_tool로 값을 직접 세팅하는 편이 안전하다
+
+**지시문**: 검증 중 textarea/input에 한글 등 비-ASCII 텍스트를 넣어야 하면, `computer{action:"type"}` 대신 `javascript_tool`로 네이티브 value setter를 호출하고 `input` 이벤트를 dispatch하라: `Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(el, text); el.dispatchEvent(new Event('input',{bubbles:true}))`. React controlled input과도 호환되고 클립보드 오염 문제를 피한다.
+**에피소드**: Task 7에서 computer.type이 클립보드 아티팩트를 유발한 뒤, Task 8 검증에서는 이 방식으로 전환해 문제없이 재현.
+**증거**: Task 8 브라우저 검증 전체(자료 입력~약점 재출제)가 이 방식으로 한 번에 성공.
+
+---
+triggers: [completeSet, session record, weakTags, storage.addSession, recordSessionStats, updateWeaknesses, hook 통합]
+status: verified
+scope: this-repo (edutrain plan)
+date: 2026-07-23
+---
+## 퀴즈 완료 → 세션·통계·약점 영속화는 hook의 단일 액션(completeSet)에서 한 번에 처리해야 한다
+
+**지시문**: Task 4에서 만든 storage/stats/weakness lib들은 그 자체로는 아무것도 호출하지 않는다. QuizRunner의 onComplete가 단순히 화면 전환만 하면 세션이 저장되지 않는다. hooks/use-edutrain.ts에 `completeSet` 액션을 추가해 (1) updateWeaknesses로 약점 갱신 (2) scoreSet으로 점수 계산 (3) recordSessionStats로 통계 갱신 (4) storage.addSession/saveStats/saveWeaknesses로 영속화를 한 번에 수행하고, 그 결과로 "result" 화면으로 전환하게 했다.
+**에피소드**: Task 8에서 age.tsx의 quiz→result 전환이 `() => goTo("result")` 플레이스홀더였던 것을 `completeSet`으로 교체. 브라우저에서 localStorage 확인: sessions/stats/weaknesses 모두 정확히 기록됨(streakDays 1, weakTags ["자료형"] 등).
+**증거**: hooks/use-edutrain.ts의 completeSet, 브라우저 localStorage 덤프로 실증(세션 1건, stats.streakDays=1, weaknesses에 자료형 wrongCount:1)
+
+---
+triggers: [updateWeaknesses, mastered true wrongCount 0, 정답 태그 신규 엔트리, weakness 목록 성장]
+status: hypothesis
+scope: this-repo (lib/weakness.ts)
+date: 2026-07-23
+---
+## updateWeaknesses는 이전에 약점이 아니었던 태그를 정답 처리해도 {wrongCount:0, mastered:true} 엔트리를 새로 만든다
+
+**지시문**: 이는 activeWeakTags(mastered 아니고 wrongCount>0 필터)에는 영향 없어 현재 기준 충족에는 문제없지만, 세션이 누적되면 weaknesses 배열이 "한 번이라도 맞은 모든 태그"까지 담아 계속 커진다. 저장 용량·표시 성능이 문제되면 `updateWeaknesses`에서 correct인데 기존 엔트리가 없으면 아예 새로 만들지 않도록 바꿔라.
+**에피소드**: Task 8 브라우저 검증에서 "가변성"(정답, 이전 약점 아님)이 `{wrongCount:0, mastered:true}`로 저장됨을 확인.
+**증거**: 브라우저 localStorage 덤프. 아직 실사용 규모에서 문제 재현 안 됨 — hypothesis로 유지.
 triggers: [vitest, "is not a constructor", "@google/genai", GoogleGenAI, vi.mock, mock class]
 status: verified
 scope: this-repo (vitest 4.x, @google/genai 2.x)
